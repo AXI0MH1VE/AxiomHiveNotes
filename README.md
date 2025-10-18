@@ -52,7 +52,7 @@ A cutting-edge, lightweight desktop notes application built with Tauri v2, React
 
 ```bash
 # Clone the repo
-git clone https://github.com/{{YOUR_USERNAME}}/AxiomHiveNotes.git
+git clone https://github.com/AXI0MH1VE/AxiomHiveNotes.git
 cd AxiomHiveNotes
 
 # Install frontend dependencies
