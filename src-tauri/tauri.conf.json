@@ -5,9 +5,7 @@
   "identifier": "app.axiomhive.notes",
   "build": {
     "frontendDist": "../app/dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm -C app dev",
-    "beforeBuildCommand": "pnpm -C app build"
+    "devUrl": "http://localhost:5173"
   },
   "app": {
     "windows": [
