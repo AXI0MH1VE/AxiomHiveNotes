@@ -2,6 +2,7 @@ use crate::db::Database;
 use crate::models::{Note, SearchResult, Tag};
 use rusqlite::{params, OptionalExtension};
 use tauri::State;
+use regex::Regex;
 
 #[tauri::command]
 pub fn create_note(
@@ -56,6 +57,16 @@ pub fn update_note(
             params![c, id],
         )
         .map_err(|e| e.to_string())?;
+        
+        // Recompute backlinks for notes that this note links to
+        let links = extract_wiki_links(&c);
+        for link_title in links {
+            if let Ok(mut stmt) = conn.prepare("SELECT id FROM notes WHERE title = ? AND deleted_at IS NULL") {
+                if let Ok(linked_id) = stmt.query_row([&link_title], |row| row.get::<_, i64>(0)) {
+                    let _ = update_backlinks_json(&conn, linked_id);
+                }
+            }
+        }
     }
     
     if let Some(f) = folder {
@@ -325,6 +336,69 @@ pub fn get_setting(db: State<Database>, key: String) -> Result<Option<String>, S
 }
 
 #[tauri::command]
+pub fn get_backlinks(db: State<Database>, note_id: i64) -> Result<Vec<(i64, String)>, String> {
+    let conn = db.conn.lock().unwrap();
+    compute_backlinks(&conn, note_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_graph_data(db: State<Database>) -> Result<serde_json::Value, String> {
+    let conn = db.conn.lock().unwrap();
+    
+    // Get all notes
+    let mut stmt = conn
+        .prepare("SELECT id, title, content_md FROM notes WHERE deleted_at IS NULL")
+        .map_err(|e| e.to_string())?;
+    
+    let notes = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    
+    // Build nodes and links
+    let mut nodes = Vec::new();
+    let mut links = Vec::new();
+    
+    for (id, title, content_md) in notes {
+        nodes.push(serde_json::json!({
+            "id": id,
+            "title": title,
+        }));
+        
+        // Extract links from this note
+        if let Some(content) = content_md {
+            let wiki_links = extract_wiki_links(&content);
+            
+            for link_title in wiki_links {
+                // Find the target note ID
+                if let Ok(target_id) = conn.query_row(
+                    "SELECT id FROM notes WHERE title = ? AND deleted_at IS NULL",
+                    [&link_title],
+                    |row| row.get::<_, i64>(0),
+                ) {
+                    links.push(serde_json::json!({
+                        "source": id,
+                        "target": target_id,
+                    }));
+                }
+            }
+        }
+    }
+    
+    Ok(serde_json::json!({
+        "nodes": nodes,
+        "links": links,
+    }))
+}
+
+#[tauri::command]
 pub fn set_setting(db: State<Database>, key: String, value: String) -> Result<(), String> {
     let conn = db.conn.lock().unwrap();
     
@@ -333,6 +407,47 @@ pub fn set_setting(db: State<Database>, key: String, value: String) -> Result<()
         params![key, value],
     )
     .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+// Helper function to extract wiki-links [[note title]] from markdown
+fn extract_wiki_links(content: &str) -> Vec<String> {
+    let re = Regex::new(r"\[\[([^\]]+)\]\]").unwrap();
+    re.captures_iter(content)
+        .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
+        .collect()
+}
+
+// Helper function to compute backlinks for a note
+fn compute_backlinks(conn: &rusqlite::Connection, note_id: i64) -> rusqlite::Result<Vec<(i64, String)>> {
+    let note = get_note_by_id(conn, note_id)?;
+    let title = note.title;
+    
+    // Find all notes that link to this note by title
+    let mut stmt = conn.prepare(
+        "SELECT id, title FROM notes WHERE deleted_at IS NULL AND content_md LIKE ?"
+    )?;
+    
+    let search_pattern = format!("%[[{}]]%", title);
+    let backlinks = stmt
+        .query_map([search_pattern], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    Ok(backlinks)
+}
+
+// Helper function to update backlinks_json for a note
+fn update_backlinks_json(conn: &rusqlite::Connection, note_id: i64) -> rusqlite::Result<()> {
+    let backlinks = compute_backlinks(conn, note_id)?;
+    let backlinks_json = serde_json::to_string(&backlinks).unwrap_or_else(|_| "[]".to_string());
+    
+    conn.execute(
+        "UPDATE notes SET backlinks_json = ? WHERE id = ?",
+        params![backlinks_json, note_id],
+    )?;
     
     Ok(())
 }

@@ -83,4 +83,11 @@ export const api = {
   
   setSetting: (key: string, value: string) =>
     invoke('set_setting', { key, value }),
+  
+  // Backlinks & Graph
+  getBacklinks: (note_id: number) =>
+    invoke<Array<[number, string]>>('get_backlinks', { note_id }),
+  
+  getGraphData: () =>
+    invoke<{ nodes: Array<{ id: number; title: string }>; links: Array<{ source: number; target: number }> }>('get_graph_data'),
 };

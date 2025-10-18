@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api, type Note } from './lib/api';
-import { Plus, Search, Trash2, Pin, Archive } from 'lucide-react';
+import { Plus, Search, Trash2, Pin, Archive, Network } from 'lucide-react';
+import { BacklinksPanel } from './components/BacklinksPanel';
+import { GraphView } from './components/GraphView';
 
 function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showGraph, setShowGraph] = useState(false);
 
   useEffect(() => {
     loadNotes();
@@ -116,6 +119,14 @@ function App() {
             <Plus className="w-4 h-4" />
             New Note
           </button>
+          
+          <button
+            onClick={() => setShowGraph(true)}
+            className="w-full flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors"
+          >
+            <Network className="w-4 h-4" />
+            Graph View
+          </button>
         </div>
         
         <div className="flex-1 overflow-y-auto">
@@ -148,6 +159,7 @@ function App() {
       </div>
       
       {/* Editor */}
+      <div className="flex-1 flex">
       <div className="flex-1 flex flex-col">
         {currentNote ? (
           <>
@@ -204,6 +216,31 @@ function App() {
           </div>
         )}
       </div>
+      
+      {/* Backlinks Panel */}
+      {currentNote && (
+        <div className="w-64 border-l border-gray-700 flex flex-col overflow-hidden">
+          <BacklinksPanel
+            noteId={currentNote.id!}
+            onNavigate={(id) => {
+              const note = notes.find(n => n.id === id);
+              if (note) setCurrentNote(note);
+            }}
+          />
+        </div>
+      )}
+      </div>
+      
+      {/* Graph View Modal */}
+      {showGraph && (
+        <GraphView
+          onClose={() => setShowGraph(false)}
+          onNavigate={(id) => {
+            const note = notes.find(n => n.id === id);
+            if (note) setCurrentNote(note);
+          }}
+        />
+      )}
     </div>
   );
 }
