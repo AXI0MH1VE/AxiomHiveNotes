@@ -60,9 +60,9 @@ Your notes stay local, your data stays yours, your system stays responsive
 <tr>
 <td width="33%" align="center">
 
-**Organization**  
-Tags · Folders  
-Pin · Archive
+**Knowledge Graph**  
+Wiki-links · Backlinks  
+Graph Visualization
 
 </td>
 <td width="33%" align="center">
@@ -88,7 +88,10 @@ CRDT Sync Ready
 
 [**⬇ Download for Windows**](https://github.com/AXI0MH1VE/AxiomHiveNotes/releases/latest)
 
-*Current version: v0.1.0 · 30MB · Windows x64*
+*Current version: v0.2.0 · 30MB · Windows x64*
+
+**NEW in v0.2.0:**  
+✨ Wiki-links `[[note title]]` · Backlinks panel · Interactive graph view
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
