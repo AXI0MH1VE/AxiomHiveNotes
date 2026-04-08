@@ -1,7 +1,7 @@
 <div align="center">
 
 # ✨ AxiomHive Notes
-
+**Creator: Nicholas M. Grossi**
 ### *Your thoughts deserve better*
 
 **A native desktop notes application that's 4× faster and 5× lighter than Obsidian**
